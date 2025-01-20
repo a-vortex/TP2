@@ -5,20 +5,6 @@
 #include <ctime>
 #include <cmath> // Para std::floor
 
-// Função que formata a data e hora
-std::string Gerenciador::formatarDataHora(int ano, int mes, int dia, float hora) {
-    std::tm t = {};
-    t.tm_year = ano - 1900;
-    t.tm_mon = mes - 1;
-    t.tm_mday = dia;
-    t.tm_hour = static_cast<int>(hora);
-    t.tm_min = static_cast<int>((hora - t.tm_hour) * 60);
-    t.tm_sec = 0;
-
-    char buffer[30];
-    std::strftime(buffer, sizeof(buffer), "%a %b %d %H:%M:%S %Y", &t);
-    return std::string(buffer);
-}
 
 // Lê dados de um arquivo e cria um objeto Hospital com base nesses dados.
 // O tempo de atendimento de cada paciente é calculado com base nos tempos dos procedimentos e nas quantidades
@@ -80,6 +66,21 @@ Hospital* Gerenciador::ProcessarEntrada(FILE *Entrada)
     return new Hospital(procedimentos[0], procedimentos[1], procedimentos[2], 
                         procedimentos[3], procedimentos[4], procedimentos[5], 
                         pacientes, n_unidades);
+}
+
+// Função que formata a data e hora
+std::string Gerenciador::formatarDataHora(int ano, int mes, int dia, float hora) {
+    std::tm t = {};
+    t.tm_year = ano - 1900;
+    t.tm_mon = mes - 1;
+    t.tm_mday = dia;
+    t.tm_hour = static_cast<int>(hora);
+    t.tm_min = static_cast<int>((hora - t.tm_hour) * 60);
+    t.tm_sec = 0;
+
+    char buffer[30];
+    std::strftime(buffer, sizeof(buffer), "%a %b %d %H:%M:%S %Y", &t);
+    return std::string(buffer);
 }
 
 std::tm Gerenciador::addHours(const std::tm& date, float hours) const {

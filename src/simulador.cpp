@@ -34,7 +34,7 @@ void Simulador::executar() {
                     Paciente* paciente = fila->Desenfileira();
                     procedimento->n_unidades--;
                     std::tm tempo_procedimento = addHours(tempo_atual, procedimento->tempo);
-                    Evento* novo_evento = new Evento(ATENDIMENTO, tempo_procedimento, paciente);
+                    Evento* novo_evento = new Evento(ATENDIMENTO, tempo_atual, paciente);
                     adicionarEvento(novo_evento);
                     std::cout << "Novo evento de atendimento criado para o paciente " << paciente->id << " atendimento: " << procedimento << " previsto para acabar" << tempo_procedimento.tm_year + 1900 << " " << tempo_procedimento.tm_mon + 1 << " " << tempo_procedimento.tm_mday << " " << tempo_procedimento.tm_hour << std::endl;
                     switch (procedimento->nome)
@@ -99,7 +99,6 @@ void Simulador::processarAtendimento(Evento* evento) {
         hospital->Triagem.n_unidades++;
         break;
     case 5:
-        paciente->instrumentos_medicamentos--;
         hospital->Atendimento.n_unidades++;
         break;
     case 7:
@@ -146,6 +145,11 @@ void Simulador::processarAtendimento(Evento* evento) {
 }
 
 double Simulador::getElapsedHours(const std::tm& start, const std::tm& end) const {
+
+    if (start.tm_year < 70 || start.tm_mon < 0 || start.tm_mday <= 0) {
+    std::cerr << "Erro: Tempo inicial inválido." << std::endl;
+    exit(EXIT_FAILURE);
+}
     time_t time_start = mktime(const_cast<std::tm*>(&start));
     time_t time_end = mktime(const_cast<std::tm*>(&end));
 
@@ -161,12 +165,23 @@ double Simulador::getElapsedHours(const std::tm& start, const std::tm& end) cons
 void Simulador::processarSaida(Evento* evento) {
     Paciente* paciente = evento->paciente;
     std::cout << "Processando saída: paciente=" << paciente->id << " tempoalta:" << tempo_atual.tm_year + 1900 << " " << tempo_atual.tm_mon + 1 << " " << tempo_atual.tm_mday << " " << tempo_atual.tm_hour << "   TEMPO CHEGADA " << paciente->tempo_admissao.tm_year + 1900 << " " << paciente->tempo_admissao.tm_mon + 1 << " " << paciente->tempo_admissao.tm_mday << " " << paciente->tempo_admissao.tm_hour << std::endl;
+        if (mktime(const_cast<std::tm*>(&tempo_atual)) == (time_t)-1) {
+            std::cerr << "Error: Invalid current time (tempo_atual)." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        if (mktime(const_cast<std::tm*>(&paciente->tempo_admissao)) == (time_t)-1) {
+            std::cerr << "Error: Invalid admission time (tempo_admissao)." << std::endl;
+            exit(EXIT_FAILURE);
+        }
 
     // Calcular o tempo total que o paciente passou no hospital
     float tempo_total_hospital = getElapsedHours(paciente->tempo_admissao, tempo_atual);
 
+    std::cout << "tempo_total_hospital: " << tempo_total_hospital << ", tempo_atendimento: " << paciente->tempo_atendimento << std::endl;
+
     // Atualizar o tempo de saída do paciente
-    paciente->tempo_saida = addHours(paciente->tempo_admissao, tempo_total_hospital);
+    paciente->tempo_saida = tempo_atual;
 
     // Calcular o tempo de espera na fila
     paciente->tempo_espera_fila = tempo_total_hospital - paciente->tempo_atendimento;
@@ -182,17 +197,16 @@ void Simulador::processarSaida(Evento* evento) {
 
 std::tm Simulador::addHours(const std::tm& date, float hours) const {
     std::tm new_date = date;
-    time_t original_time = mktime(&new_date);
+    time_t original_time = mktime(&new_date); // Converte para time_t
+
     if (original_time == (time_t)-1) {
-        char s[64] = {0};
-        strftime(s, sizeof(s), "%c", &new_date);
-        std::cerr << "Error: Invalid time value. " << s << std::endl;
+        std::cerr << "Error: Invalid time value during mktime." << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    original_time += static_cast<time_t>(hours * 3600);
+    original_time += static_cast<time_t>(hours * 3600); // Adiciona as horas
 
-    std::tm* updated_date = localtime(&original_time);
+    std::tm* updated_date = localtime(&original_time); // Converte de volta para std::tm
     if (updated_date == nullptr) {
         std::cerr << "Error: localtime conversion failed." << std::endl;
         exit(EXIT_FAILURE);

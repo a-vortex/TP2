@@ -14,7 +14,10 @@ private:
 public:
     FilaPrioridade eventos;
 
-    Simulador(Hospital* hospital) : hospital(hospital), tempo_atual({0, 0, 0, 0}), eventos(10) {}
+    Simulador(Hospital* hospital) 
+    : hospital(hospital), 
+      tempo_atual({0, 0, 0, 0, 0, 0, 0, 0, 0, -1, nullptr}), 
+      eventos(10) {}
 
     ~Simulador();
 
