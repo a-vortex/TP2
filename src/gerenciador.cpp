@@ -73,9 +73,14 @@ Hospital* Gerenciador::ProcessarEntrada(FILE *Entrada)
 }
 
 void Gerenciador::imprimirSaida(const Paciente& paciente) {
+    // Truncar a hora de tempo_saida para 2 casas decimais
+    Tempo tempo_saida_truncado = paciente.tempo_saida;
+    tempo_saida_truncado.hora = std::floor(tempo_saida_truncado.hora * 100) / 100.0;
+    std::cout<<tempo_saida_truncado.hora<<std::endl;
+
     // Converter os tempos para strings formatadas
     std::string admissao_str = tempoParaString(paciente.tempo_admissao);
-    std::string saida_str = tempoParaString(paciente.tempo_saida);
+    std::string saida_str = tempoParaString(tempo_saida_truncado);
 
     // Imprimir os dados formatados
     std::cout << std::setfill('0') << std::setw(7) << paciente.id << " ";
@@ -88,12 +93,17 @@ void Gerenciador::imprimirSaida(const Paciente& paciente) {
 
 std::string Gerenciador::tempoParaString(const Tempo& tempo) const {
     std::tm tm = {};
+    
     tm.tm_year = tempo.ano - 1900;
     tm.tm_mon = tempo.mes - 1;
     tm.tm_mday = tempo.dia;
     tm.tm_hour = static_cast<int>(tempo.hora);
-    tm.tm_min = static_cast<int>((tempo.hora - tm.tm_hour) * 60);
-    tm.tm_sec = static_cast<int>((tempo.hora - tm.tm_hour - tm.tm_min / 60.0) * 3600);
+    float parte_hora = tempo.hora - tm.tm_hour;
+
+    tm.tm_min = static_cast<int>(parte_hora * 60);
+    tm.tm_sec = static_cast<int>((parte_hora * 60 - tm.tm_min) * 60);
+    std::cerr << "Ano: " << tm.tm_year << ", Mês: " << tm.tm_mon << ", Dia: " << tm.tm_mday << std::endl;
+    std::cerr << "Hora: " << tm.tm_hour << ", Minuto: " << tm.tm_min << ", Segundo: " << tm.tm_sec << std::endl;
 
     // Verificar se os valores estão corretos
     if (tm.tm_year < 0 || tm.tm_mon < 0 || tm.tm_mon > 11 || tm.tm_mday < 1 || tm.tm_mday > 31 ||
