@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <sstream>
 #include <ctime>
+#include <cmath> // Para std::floor
 
 // Função que formata a data e hora
 std::string Gerenciador::formatarDataHora(int ano, int mes, int dia, float hora) {
@@ -55,16 +56,25 @@ Hospital* Gerenciador::ProcessarEntrada(FILE *Entrada)
             std::cerr << "Erro ao ler os dados do paciente." << std::endl;
             exit(1);
         }
-        Tempo chegada{ano, mes, dia, hora};        
-        pacientes[i] = Paciente(id, alta, chegada, grau_urgencia, medidas_hospitalares,
+
+        // Inicializar a estrutura std::tm para a data e hora de admissão
+        std::tm admissao = {};
+        admissao.tm_year = ano - 1900;
+        admissao.tm_mon = mes - 1;
+        admissao.tm_mday = dia;
+        admissao.tm_hour = static_cast<int>(hora);
+        admissao.tm_min = static_cast<int>((hora - admissao.tm_hour) * 60);
+        admissao.tm_sec = 0;
+
+        pacientes[i] = Paciente(id, alta, admissao, grau_urgencia, medidas_hospitalares,
                                 testes_laboratorio, exames_imagem, instrumentos_medicamentos);
 
-        pacientes[i].tempo_atendimento =  procedimentos[0].tempo.toDecimal() + 
-                                          procedimentos[1].tempo.toDecimal() + 
-                                         (procedimentos[2].tempo.toDecimal() * pacientes[i].medidas_hospitalares) + 
-                                         (procedimentos[3].tempo.toDecimal() * pacientes[i].testes_laboratorio) +
-                                         (procedimentos[4].tempo.toDecimal() * pacientes[i].exames_imagem) + 
-                                         (procedimentos[5].tempo.toDecimal() * pacientes[i].instrumentos_medicamentos);
+        pacientes[i].tempo_atendimento =  procedimentos[0].tempo + 
+                                          procedimentos[1].tempo + 
+                                         (procedimentos[2].tempo * pacientes[i].medidas_hospitalares) + 
+                                         (procedimentos[3].tempo * pacientes[i].testes_laboratorio) +
+                                         (procedimentos[4].tempo * pacientes[i].exames_imagem) + 
+                                         (procedimentos[5].tempo * pacientes[i].instrumentos_medicamentos);
     }
 
     return new Hospital(procedimentos[0], procedimentos[1], procedimentos[2], 
@@ -72,47 +82,43 @@ Hospital* Gerenciador::ProcessarEntrada(FILE *Entrada)
                         pacientes, n_unidades);
 }
 
-void Gerenciador::imprimirSaida(const Paciente& paciente) {
-    // Truncar a hora de tempo_saida para 2 casas decimais
-    Tempo tempo_saida_truncado = paciente.tempo_saida;
-    tempo_saida_truncado.hora = std::floor(tempo_saida_truncado.hora * 100) / 100.0;
-    std::cout<<tempo_saida_truncado.hora<<std::endl;
-
-    // Converter os tempos para strings formatadas
-    std::string admissao_str = tempoParaString(paciente.tempo_admissao);
-    std::string saida_str = tempoParaString(tempo_saida_truncado);
-
-    // Imprimir os dados formatados
-    std::cout << std::setfill('0') << std::setw(7) << paciente.id << " ";
-    std::cout << admissao_str << " ";
-    std::cout << saida_str << " ";
-    std::cout << std::fixed << std::setprecision(2) << paciente.tempo_total << " ";
-    std::cout << paciente.tempo_espera_fila << " ";
-    std::cout << paciente.tempo_atendimento << std::endl;
-}
-
-std::string Gerenciador::tempoParaString(const Tempo& tempo) const {
-    std::tm tm = {};
-    
-    tm.tm_year = tempo.ano - 1900;
-    tm.tm_mon = tempo.mes - 1;
-    tm.tm_mday = tempo.dia;
-    tm.tm_hour = static_cast<int>(tempo.hora);
-    float parte_hora = tempo.hora - tm.tm_hour;
-
-    tm.tm_min = static_cast<int>(parte_hora * 60);
-    tm.tm_sec = static_cast<int>((parte_hora * 60 - tm.tm_min) * 60);
-    std::cerr << "Ano: " << tm.tm_year << ", Mês: " << tm.tm_mon << ", Dia: " << tm.tm_mday << std::endl;
-    std::cerr << "Hora: " << tm.tm_hour << ", Minuto: " << tm.tm_min << ", Segundo: " << tm.tm_sec << std::endl;
-
-    // Verificar se os valores estão corretos
-    if (tm.tm_year < 0 || tm.tm_mon < 0 || tm.tm_mon > 11 || tm.tm_mday < 1 || tm.tm_mday > 31 ||
-        tm.tm_hour < 0 || tm.tm_hour > 23 || tm.tm_min < 0 || tm.tm_min > 59 || tm.tm_sec < 0 || tm.tm_sec > 59) {
-        std::cerr << "Erro ao converter Tempo para std::tm: valores inválidos" << std::endl;
-        return "Invalid Time";
+std::tm Gerenciador::addHours(const std::tm& date, float hours) const {
+    std::tm new_date = date;
+    time_t original_time = mktime(&new_date);
+    if (original_time == (time_t)-1) {
+        char s[64] = {0};
+        strftime(s, sizeof(s), "%c", &new_date);
+        std::cerr << "Error: Invalid time value. " << s << std::endl;
+        exit(EXIT_FAILURE);
     }
 
-    std::ostringstream oss;
-    oss << std::put_time(&tm, "%a %b %d %H:%M:%S %Y");
-    return oss.str();
+    original_time += static_cast<time_t>(hours * 3600);
+
+    std::tm* updated_date = localtime(&original_time);
+    if (updated_date == nullptr) {
+        std::cerr << "Error: localtime conversion failed." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    return *updated_date;
+}
+
+std::string Gerenciador::tempoParaString(const std::tm& tempo) const {
+    char s[64] = {0};
+    strftime(s, sizeof(s), "%a %b %d %H:%M:%S %Y", &tempo);
+    return std::string(s);
+}
+
+void Gerenciador::imprimirSaida(const Paciente& paciente) {
+    // Converter os tempos para strings formatadas
+    std::string admissao_str = tempoParaString(paciente.tempo_admissao);
+    std::string saida_str = tempoParaString(addHours(paciente.tempo_admissao, paciente.tempo_total));
+
+    // Imprimir os dados formatados
+    std::cout << paciente.id << " ";
+    std::cout << admissao_str << " ";
+    std::cout << saida_str << " ";
+    std::cout << paciente.tempo_total << " ";
+    std::cout << paciente.tempo_espera_fila << " ";
+    std::cout << paciente.tempo_atendimento << std::endl;
 }

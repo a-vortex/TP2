@@ -1,5 +1,5 @@
 #include "../include/filaprioridade.h"
-#include <algorithm>
+#include <ctime>
 
 FilaPrioridade::FilaPrioridade(int capacidade_inicial) : capacidade(capacidade_inicial), tamanho(0) {
     eventos = new Evento*[capacidade];
@@ -20,7 +20,7 @@ void FilaPrioridade::redimensionar(int nova_capacidade) {
 }
 
 void FilaPrioridade::subir(int i) {
-    while (i > 0 && eventos[(i - 1) / 2]->momento.toDecimal() > eventos[i]->momento.toDecimal()) {
+    while (i > 0 && mktime(&eventos[(i - 1) / 2]->momento) > mktime(&eventos[i]->momento)) {
         trocar(i, (i - 1) / 2);
         i = (i - 1) / 2;
     }
@@ -31,10 +31,10 @@ void FilaPrioridade::descer(int i) {
     int esquerda = 2 * i + 1;
     int direita = 2 * i + 2;
 
-    if (esquerda < tamanho && eventos[esquerda]->momento.toDecimal() < eventos[menor]->momento.toDecimal()) {
+    if (esquerda < tamanho && mktime(&eventos[esquerda]->momento) < mktime(&eventos[menor]->momento)) {
         menor = esquerda;
     }
-    if (direita < tamanho && eventos[direita]->momento.toDecimal() < eventos[menor]->momento.toDecimal()) {
+    if (direita < tamanho && mktime(&eventos[direita]->momento) < mktime(&eventos[menor]->momento)) {
         menor = direita;
     }
     if (menor != i) {
@@ -44,7 +44,9 @@ void FilaPrioridade::descer(int i) {
 }
 
 void FilaPrioridade::trocar(int i, int j) {
-    std::swap(eventos[i], eventos[j]);
+    Evento* temp = eventos[i];
+    eventos[i] = eventos[j];
+    eventos[j] = temp;
 }
 
 void FilaPrioridade::adicionar(Evento* evento) {

@@ -2,6 +2,7 @@
 #define EVENTO_H
 
 #include "paciente.h"
+#include <ctime>
 
 enum TipoEvento {
     CHEGADA,
@@ -16,20 +17,20 @@ class Evento {
         TipoEvento tipo;
 
         // Tempo em que o evento ocorre
-        Tempo momento;
+        std::tm momento;
 
         // Ponteiro para o paciente associado ao evento
         Paciente* paciente;
 
-        Evento(TipoEvento tipo, Tempo tempo_evento, Paciente* paciente) : 
-               tipo(tipo), paciente(paciente) {
+        Evento(TipoEvento tipo, const std::tm& tempo_evento, Paciente* paciente) : 
+               tipo(tipo), momento(tempo_evento), paciente(paciente) {
             momento = tempo_evento;
             }
 
         // Operador de comparação para a fila de prioridade
         bool operator<(const Evento& other) const {
-            return momento.toDecimal() > other.momento.toDecimal();
-    }
+            return mktime(const_cast<std::tm*>(&momento)) > mktime(const_cast<std::tm*>(&other.momento));
+        }
 };
 
 #endif // EVENTO_H

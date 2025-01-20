@@ -3,6 +3,7 @@
 
 #include "fila.h"
 #include "paciente.h"
+#include <ctime> 
 
 // TAD responsável por armazenar as informações dos procedimentos, com suas respectivas filas.
 class Procedimentos {
@@ -13,7 +14,7 @@ class Procedimentos {
 
     public:
         int nome; // Nome do procedimento
-        Tempo tempo; // Tempo necessário para realizar o procedimento
+        float tempo; // Tempo necessário para realizar o procedimento em horas
         int n_unidades; // Número de unidades disponíveis para o procedimento
 
         float tempo_ocioso; // Tempo ocioso das unidades
@@ -28,12 +29,12 @@ class Procedimentos {
         Fila& getVermelha() { return vermelha; }
 
         // Construtor padrão
-        Procedimentos() : nome(0), tempo({0, 0, 0, 0}), n_unidades(0), tempo_ocioso(0), tempo_util(0) {}
+        Procedimentos() : nome(0), tempo(0), n_unidades(0), tempo_ocioso(0), tempo_util(0) {}
 
         // Construtor que inicializa o tempo e o número de unidades
         // @param tempo Tempo necessário para realizar o procedimento
         // @param n_unidades Número de unidades disponíveis para o procedimento
-        Procedimentos(float aux, int n_unidades, int Nome) : nome(Nome), tempo({0, 0, 0, aux}), n_unidades(n_unidades), tempo_ocioso(0), tempo_util(0) {}
+        Procedimentos(float aux, int n_unidades, int Nome) : nome(Nome), tempo(aux), n_unidades(n_unidades), tempo_ocioso(0), tempo_util(0) {}
 
         // Destrutor padrão
         ~Procedimentos() = default;

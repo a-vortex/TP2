@@ -1,13 +1,13 @@
 #ifndef PACIENTE_H
 #define PACIENTE_H
 
-#include "tempo.h"
+#include <ctime> 
 
-// A classe paciente é o tad responsável por armazenar as informações de cada paciente.
-struct Paciente {
+class Paciente {
+public:
     int id;
-    Tempo tempo_admissao;
-    Tempo tempo_saida;
+    std::tm tempo_admissao;
+    std::tm tempo_saida;
     int grau_urgencia;
     float tempo_total;
     float tempo_espera_fila;
@@ -20,7 +20,8 @@ struct Paciente {
     int estado;
 
     Paciente(){};
-    Paciente(int id, int alta, Tempo chegada, int grau_urgencia,
+    Paciente(int id, int alta, const std::tm& admissao, int grau_urgencia,
              int medidas_hospitalares, int testes_laboratorio, int exames_imagem, int instrumentos_medicamentos);
 };
+
 #endif // PACIENTE_H

@@ -1,5 +1,7 @@
 #include "../include/simulador.h"
-#include <iostream> 
+#include <iostream>
+#include <iomanip>
+#include <ctime>
 
 Simulador::~Simulador() {
     while (!eventos.vazio()) {
@@ -9,7 +11,7 @@ Simulador::~Simulador() {
 
 void Simulador::adicionarEvento(Evento* evento) {
     eventos.adicionar(evento);
-    std::cout << "Evento adicionado: tipo=" << evento->tipo << ", tempo=" << tempo_atual.ano << " "<< tempo_atual.mes << " " << tempo_atual.dia << " " << tempo_atual.hora << std::endl;
+    std::cout << "Evento adicionado: tipo=" << evento->tipo << ", tempo=" << tempo_atual.tm_year + 1900 << " " << tempo_atual.tm_mon + 1 << " " << tempo_atual.tm_mday << " " << tempo_atual.tm_hour << std::endl;
 }
 
 void Simulador::executar() {
@@ -31,11 +33,10 @@ void Simulador::executar() {
                 while (!fila->Vazia() && procedimento->n_unidades > 0) {
                     Paciente* paciente = fila->Desenfileira();
                     procedimento->n_unidades--;
-                    Tempo tempo_procedimento = procedimento->tempo;
-                    Tempo tempoatual = tempo_atual + tempo_procedimento;
-                    Evento* novo_evento = new Evento(ATENDIMENTO, tempoatual, paciente);
+                    std::tm tempo_procedimento = addHours(tempo_atual, procedimento->tempo);
+                    Evento* novo_evento = new Evento(ATENDIMENTO, tempo_procedimento, paciente);
                     adicionarEvento(novo_evento);
-                    std::cout << "Novo evento de atendimento criado para o paciente " << paciente->id << " atendimento: " << procedimento << " previsto para acabar" << tempo_atual.ano << " "<< tempo_atual.mes << " " << tempo_atual.dia << " " << tempo_atual.hora << std::endl;
+                    std::cout << "Novo evento de atendimento criado para o paciente " << paciente->id << " atendimento: " << procedimento << " previsto para acabar" << tempo_procedimento.tm_year + 1900 << " " << tempo_procedimento.tm_mon + 1 << " " << tempo_procedimento.tm_mday << " " << tempo_procedimento.tm_hour << std::endl;
                     switch (procedimento->nome)
                     {
                     case 0:
@@ -80,17 +81,13 @@ void Simulador::processarEvento(Evento* evento) {
 
 void Simulador::processarChegada(Evento* evento) {
 
-    std::cout << "Processando chegada: paciente=" << evento->paciente->id << ", tempo=" << tempo_atual.ano << " "<< tempo_atual.mes << " " << tempo_atual.dia << " " << tempo_atual.hora << std::endl;
+    std::cout << "Processando chegada: paciente=" << evento->paciente->id << ", tempo=" << tempo_atual.tm_year + 1900 << " "<< tempo_atual.tm_mon + 1 << " " << tempo_atual.tm_mday << " " << tempo_atual.tm_hour << std::endl;
 
     hospital->Triagem.getVermelha().Enfileira(*evento->paciente);
 
     evento->paciente->estado = 2;
 
 }
-
-
-
-
 
 void Simulador::processarAtendimento(Evento* evento) {
     Paciente* paciente = evento->paciente;
@@ -131,77 +128,45 @@ void Simulador::processarAtendimento(Evento* evento) {
 
     if (todos_procedimentos_realizados || paciente->alta) {
         // Criar um novo evento de saída para o paciente
-        Evento* novo_evento = new Evento(SAIDA, evento->momento , paciente);
+        Evento* novo_evento = new Evento(SAIDA, evento->momento, paciente);
         adicionarEvento(novo_evento);
         std::cout << "Paciente " << paciente->id << " concluiu todos os procedimentos. Evento de saída criado." << std::endl;
     } else {
-        // Verificar a fila dos procedimentos que o paciente ainda precisa fazer e colocá-lo na menor
-        Fila* menor_fila = nullptr;
-        Procedimentos* procedimento_selecionado = nullptr;
-        Tempo menor_tempo_espera = {9999, 0, 0, 0}; // Inicializar com um valor grande
-        int menor_indice = -1; // Inicializar com um valor inválido
-
-        auto calcularTempoEspera = [](Procedimentos* proc, int grau_urgencia) -> Tempo {
-            int num_pacientes_vermelha = proc->getVermelha().tamanho;
-            int num_pacientes_amarela = proc->getAmarela().tamanho;
-            int num_pacientes_verde = proc->getVerde().tamanho;
-            Tempo tempo_espera = {0, 0, 0, 0};
-
-            switch (grau_urgencia) {
-                case 0: // Verde
-                    tempo_espera = proc->tempo * (num_pacientes_vermelha + num_pacientes_amarela + num_pacientes_verde);
-                    break;
-                case 1: // Amarela
-                    tempo_espera = proc->tempo * (num_pacientes_vermelha + num_pacientes_amarela);
-                    break;
-                case 2: // Vermelha
-                    tempo_espera = proc->tempo * num_pacientes_vermelha;
-                    break;
-            }
-            return tempo_espera;
-        };
-
-        auto verificarFila = [&](Procedimentos* proc, int indice) {
-            Tempo tempo_espera = calcularTempoEspera(proc, paciente->grau_urgencia);
-            if (tempo_espera.toDecimal() < menor_tempo_espera.toDecimal() || 
-                (tempo_espera.toDecimal() == menor_tempo_espera.toDecimal() && (menor_indice == -1 || indice < menor_indice))) {
-                menor_tempo_espera = tempo_espera;
-                menor_fila = (paciente->grau_urgencia == 0) ? &proc->getVerde() :
-                             (paciente->grau_urgencia == 1) ? &proc->getAmarela() : &proc->getVermelha();
-                procedimento_selecionado = proc;
-                menor_indice = indice;
-            }
-        };
-
+        // Verificar a fila dos procedimentos que o paciente ainda precisa fazer e colocá-lo na menor fila
         if (paciente->medidas_hospitalares > 0) {
-            verificarFila(&hospital->Medidas, 0);
-        }
-        if (paciente->testes_laboratorio > 0) {
-            verificarFila(&hospital->Testes, 1);
-        }
-        if (paciente->exames_imagem > 0) {
-            verificarFila(&hospital->Imagem, 2);
-        }
-        if (paciente->instrumentos_medicamentos > 0) {
-            verificarFila(&hospital->Instrumentos, 3);
-        }
-
-        if (menor_fila != nullptr) {
-            menor_fila->Enfileira(*paciente);
-            std::cout << "Paciente " << paciente->id << " foi colocado na fila do procedimento " << procedimento_selecionado->nome << " com tempo de espera " << menor_tempo_espera.toDecimal() << std::endl;
+            hospital->Medidas.getVerde().Enfileira(*paciente);
+        } else if (paciente->testes_laboratorio > 0) {
+            hospital->Testes.getVerde().Enfileira(*paciente);
+        } else if (paciente->exames_imagem > 0) {
+            hospital->Imagem.getVerde().Enfileira(*paciente);
+        } else if (paciente->instrumentos_medicamentos > 0) {
+            hospital->Instrumentos.getVerde().Enfileira(*paciente);
         }
     }
 }
 
+double Simulador::getElapsedHours(const std::tm& start, const std::tm& end) const {
+    time_t time_start = mktime(const_cast<std::tm*>(&start));
+    time_t time_end = mktime(const_cast<std::tm*>(&end));
+
+    if (time_start == (time_t)-1 || time_end == (time_t)-1) {
+        std::cerr << "Error: Invalid time values." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    double seconds_diff = difftime(time_end, time_start);
+    return seconds_diff / 3600.0;
+}
+
 void Simulador::processarSaida(Evento* evento) {
     Paciente* paciente = evento->paciente;
-    std::cout << "Processando saída: paciente=" << paciente->id << " tempoalta:"<< tempo_atual.ano << " "<< tempo_atual.mes << " " << tempo_atual.dia << " " << tempo_atual.hora << "   TEMPO CHEGADA " << paciente->tempo_admissao.ano << " " << paciente->tempo_admissao.mes << " " << paciente->tempo_admissao.dia << " "<< paciente->tempo_admissao.hora<< std::endl;
-
-    // Atualizar o tempo de saída do paciente
-    paciente->tempo_saida = tempo_atual;
+    std::cout << "Processando saída: paciente=" << paciente->id << " tempoalta:" << tempo_atual.tm_year + 1900 << " " << tempo_atual.tm_mon + 1 << " " << tempo_atual.tm_mday << " " << tempo_atual.tm_hour << "   TEMPO CHEGADA " << paciente->tempo_admissao.tm_year + 1900 << " " << paciente->tempo_admissao.tm_mon + 1 << " " << paciente->tempo_admissao.tm_mday << " " << paciente->tempo_admissao.tm_hour << std::endl;
 
     // Calcular o tempo total que o paciente passou no hospital
-    float tempo_total_hospital = tempo_atual.toDecimal() - paciente->tempo_admissao.toDecimal();
+    float tempo_total_hospital = getElapsedHours(paciente->tempo_admissao, tempo_atual);
+
+    // Atualizar o tempo de saída do paciente
+    paciente->tempo_saida = addHours(paciente->tempo_admissao, tempo_total_hospital);
 
     // Calcular o tempo de espera na fila
     paciente->tempo_espera_fila = tempo_total_hospital - paciente->tempo_atendimento;
@@ -211,6 +176,27 @@ void Simulador::processarSaida(Evento* evento) {
     std::cout << "Paciente " << paciente->id << " saiu do hospital. Tempo total: " << paciente->tempo_total << std::endl;
     std::cout << "Tempo de espera na fila: " << paciente->tempo_espera_fila << std::endl;
     std::cout << "Tempo de atendimento: " << paciente->tempo_atendimento << std::endl;
-    std::cout << "TEMPO CHEGADA " << paciente->tempo_admissao.ano << " " << paciente->tempo_admissao.mes << " " << paciente->tempo_admissao.dia << " "<< paciente->tempo_admissao.hora<< std::endl;
-    std::cout << "TEMPO SAIDA " << paciente->tempo_saida.ano << " " << paciente->tempo_saida.mes << " " << paciente->tempo_saida.dia << " "<< paciente->tempo_saida.hora<< std::endl;
+    std::cout << "TEMPO CHEGADA " << paciente->tempo_admissao.tm_year + 1900 << " " << paciente->tempo_admissao.tm_mon + 1 << " " << paciente->tempo_admissao.tm_mday << " " << paciente->tempo_admissao.tm_hour << std::endl;
+    std::cout << "TEMPO SAIDA " << paciente->tempo_saida.tm_year + 1900 << " " << paciente->tempo_saida.tm_mon + 1 << " " << paciente->tempo_saida.tm_mday << " " << paciente->tempo_saida.tm_hour << std::endl;
+}
+
+std::tm Simulador::addHours(const std::tm& date, float hours) const {
+    std::tm new_date = date;
+    time_t original_time = mktime(&new_date);
+    if (original_time == (time_t)-1) {
+        char s[64] = {0};
+        strftime(s, sizeof(s), "%c", &new_date);
+        std::cerr << "Error: Invalid time value. " << s << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    original_time += static_cast<time_t>(hours * 3600);
+
+    std::tm* updated_date = localtime(&original_time);
+    if (updated_date == nullptr) {
+        std::cerr << "Error: localtime conversion failed." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    return *updated_date;
 }

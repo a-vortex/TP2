@@ -51,4 +51,5 @@ int main(int argc, char** argv) {
     delete gerenciador;
     delete HZ;
     return 0;
+    
 }
