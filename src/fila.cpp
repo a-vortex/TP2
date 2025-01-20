@@ -21,14 +21,17 @@ void Fila::Enfileira(const Paciente& paciente) {
 };
 
 // Remove o paciente do início da fila, deslocando os pacientes restantes.
-void Fila::Desenfileira() {
+Paciente* Fila::Desenfileira() {
     if (tamanho > 0) {
+        Paciente* paciente = new Paciente(pacientes[0]);
         for (int i = 1; i < tamanho; ++i) {
             pacientes[i - 1] = pacientes[i];
         }
         --tamanho;
+        return paciente;
     }
-};
+    return nullptr; // Retorna nullptr se a fila estiver vazia
+}
 
 // Verifica se a fila está vazia.
 bool Fila::Vazia() const {

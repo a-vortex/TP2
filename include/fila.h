@@ -19,7 +19,7 @@ class Fila{
         ~Fila() { delete[] pacientes; }
 
         void Enfileira(const Paciente& paciente);
-        void Desenfileira();
+        Paciente* Desenfileira();
         bool Vazia() const;
 
 };

@@ -4,36 +4,41 @@
 #include "paciente.h"
 #include "procedimentos.h"
 
-//Tad responsavel por armazenar as informações do hospital.
-class Hospital{
-    public:
+// Classe que representa um hospital
+class Hospital {
+public:
+    Procedimentos Triagem;
+    Procedimentos Atendimento;
+    Procedimentos Medidas;
+    Procedimentos Testes;
+    Procedimentos Imagem;
+    Procedimentos Instrumentos;
 
-        Procedimentos Triagem;
-        Procedimentos Atendimento;
+    Paciente* pacientes;
+    int populacao;
 
-        Procedimentos Medidas;
-        Procedimentos Testes;
-        Procedimentos Imagem;
-        Procedimentos Instrumentos;
+    int getPopulacao() const { return populacao; }
+    Paciente* getPacientes() const { return pacientes; }
 
-        Paciente* pacientes; // Ponteiro para um array dinâmico de Pacientes
-        int populacao;       // Número de pacientes
+    // Desabilitar a cópia do objeto Hospital
+    Hospital(const Hospital&) = delete;
+    Hospital& operator=(const Hospital&) = delete;
 
-        Hospital(Procedimentos Triagem, Procedimentos Atendimento, Procedimentos Medidas, 
-                 Procedimentos Testes, Procedimentos Imagem, Procedimentos Instrumentos,
-                 Paciente* pacientes, int n_unidades) : 
-                 Triagem(Triagem), Atendimento(Atendimento), Medidas(Medidas), 
-                 Testes(Testes), Imagem(Imagem), Instrumentos(Instrumentos),
-                 pacientes(pacientes), populacao(n_unidades) {};
-        ~Hospital() {
-            Triagem.~Procedimentos();
-            Atendimento.~Procedimentos();
-            Medidas.~Procedimentos();
-            Testes.~Procedimentos();
-            Imagem.~Procedimentos();
-            Instrumentos.~Procedimentos();
+    // Construtor que inicializa os procedimentos e os pacientes
+    Hospital(Procedimentos triagem, Procedimentos atendimento, Procedimentos medidas, 
+             Procedimentos testes, Procedimentos imagem, Procedimentos instrumentos, 
+             Paciente* pacientes, int n_unidades) 
+        : Triagem(triagem), Atendimento(atendimento), Medidas(medidas), 
+          Testes(testes), Imagem(imagem), Instrumentos(instrumentos), 
+          pacientes(pacientes), populacao(n_unidades) {}
+
+    // Destrutor que libera a memória alocada para os pacientes
+    ~Hospital() {
+        if (pacientes != nullptr) {
             delete[] pacientes;
+            pacientes = nullptr;
         }
+    }
 
 };
 

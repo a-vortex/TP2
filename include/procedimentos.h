@@ -2,40 +2,41 @@
 #define PROCEDIMENTOS_H
 
 #include "fila.h"
+#include "paciente.h"
 
-//Tad responsavel por armazenar as informações dos procedimentos, com suas respectivas filas.
+// TAD responsável por armazenar as informações dos procedimentos, com suas respectivas filas.
 class Procedimentos {
+    private:
+        Fila vermelha; // Fila de prioridade vermelha
+        Fila amarela; // Fila de prioridade amarela
+        Fila verde; // Fila de prioridade verde
 
     public:
+        int nome; // Nome do procedimento
+        Tempo tempo; // Tempo necessário para realizar o procedimento
+        int n_unidades; // Número de unidades disponíveis para o procedimento
 
-        float tempo;
-        int n_unidades;
+        float tempo_ocioso; // Tempo ocioso das unidades
+        float tempo_util; // Tempo útil das unidades
 
-        float tempo_ocioso;
-        float tempo_util;
+        float tempo_espera_vermelha = 0; // Tempo de espera acumulado para a fila vermelha
+        float tempo_espera_amarela = 0; // Tempo de espera acumulado para a fila amarela
+        float tempo_espera_verde = 0; // Tempo de espera acumulado para a fila verde
 
-        float tempo_espera_vermelha = 0;
-        float tempo_espera_amarela = 0;
-        float tempo_espera_verde = 0;
+        Fila& getVerde() { return verde; }
+        Fila& getAmarela() { return amarela; }
+        Fila& getVermelha() { return vermelha; }
 
-        Fila* vermelha;
-        Fila* amarela;
-        Fila* verde;
+        // Construtor padrão
+        Procedimentos() : nome(0), tempo({0, 0, 0, 0}), n_unidades(0), tempo_ocioso(0), tempo_util(0) {}
 
-        Procedimentos(){};
-        Procedimentos(float tempo, int n_unidades) : tempo(tempo), n_unidades(n_unidades) {
-            vermelha = new Fila();
-            amarela = new Fila();
-            verde = new Fila();
-            tempo_ocioso = 0;
-            tempo_util = 0;
-        }
-        ~Procedimentos() {
-            vermelha->~Fila();
-            amarela->~Fila();
-            verde->~Fila();
-        }
+        // Construtor que inicializa o tempo e o número de unidades
+        // @param tempo Tempo necessário para realizar o procedimento
+        // @param n_unidades Número de unidades disponíveis para o procedimento
+        Procedimentos(float aux, int n_unidades, int Nome) : nome(Nome), tempo({0, 0, 0, aux}), n_unidades(n_unidades), tempo_ocioso(0), tempo_util(0) {}
 
+        // Destrutor padrão
+        ~Procedimentos() = default;
 };
 
 #endif // PROCEDIMENTOS_H
