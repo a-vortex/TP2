@@ -3,6 +3,7 @@
 #include <string>
 #include "../include/gerenciador.h"
 #include "../include/simulador.h"
+#include "../include/evento.h"
 
 //==========Estruturas de Dados==========
 
@@ -17,36 +18,33 @@ int main(int argc, char** argv) {
     // Verificação da existência do arquivo parâmetro do programa.
     if (argc != 2) {
         std::cerr << "Uso: " << argv[0] << " <arquivo.csv>" << std::endl;
-        return 1;
+        return false;
     }
     
     FILE* Entrada = fopen(argv[1], "r");
     if (!Entrada) {
         std::cerr << "Erro ao abrir o arquivo: " << argv[1] << std::endl;
-        return 1;
+        return false;
     }
 
-    // Processamento do arquivo de entrada
     Gerenciador* gerenciador = new Gerenciador();
+    
+    // Processamento do arquivo de entrada
     Hospital* HZ = gerenciador->ProcessarEntrada(Entrada);
     fclose(Entrada);
-
 
     // Criação do simulador
     Simulador simulador(HZ);
 
     // Adicionar eventos iniciais de chegada
     for (int i = 0; i < HZ->populacao; ++i) {
-        simulador.adicionarEvento(new Evento(CHEGADA, HZ->pacientes[i].tempo_admissao, &HZ->pacientes[i]));
+        simulador.adicionarEvento(new Evento(CHEGADA, HZ->pacientes[i]->tempo_admissao, HZ->pacientes[i]));
     }
 
     // Executar a simulação
     simulador.executar();
 
-    // Imprimir a saída
-    for (int i = 0; i < HZ->populacao; ++i){
-        gerenciador->imprimirSaida(HZ->pacientes[i]);
-    }
+    gerenciador->imprimirSaida(HZ->getPacientes(), HZ->getPopulacao());
 
     delete gerenciador;
     delete HZ;

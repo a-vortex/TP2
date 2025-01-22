@@ -11,14 +11,19 @@ class Fila{
         
     public:
 
-        Paciente* pacientes;
+        Paciente** pacientes;
         int capacidade;
         int tamanho;
 
         Fila() : pacientes(nullptr), capacidade(0), tamanho(0) {}
-        ~Fila() { delete[] pacientes; }
+        ~Fila() {
+        for (int i = 0; i < tamanho; ++i) {
+            delete pacientes[i]; // Libera a memória de cada paciente
+        }
+        delete[] pacientes; // Libera o array de ponteiros
+    }
 
-        void Enfileira(const Paciente& paciente);
+        void Enfileira(Paciente* paciente);
         Paciente* Desenfileira();
         bool Vazia() const;
 

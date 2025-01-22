@@ -2,41 +2,54 @@
 #include <iostream>
 #include <iomanip>
 #include <ctime>
+#include <cmath>
 
-Simulador::~Simulador() {
-    while (!eventos.vazio()) {
+Simulador::~Simulador()
+{
+    while (!eventos.vazio())
+    {
         delete eventos.remover();
     }
 }
 
-void Simulador::adicionarEvento(Evento* evento) {
+void Simulador::adicionarEvento(Evento *evento)
+{
     eventos.adicionar(evento);
-    std::cout << "Evento adicionado: tipo=" << evento->tipo << ", tempo=" << tempo_atual.tm_year + 1900 << " " << tempo_atual.tm_mon + 1 << " " << tempo_atual.tm_mday << " " << tempo_atual.tm_hour << std::endl;
 }
 
-void Simulador::executar() {
-    while (!eventos.vazio() || !hospital->Triagem.getVerde().Vazia() || !hospital->Triagem.getAmarela().Vazia() || !hospital->Triagem.getVermelha().Vazia()
-                            || !hospital->Atendimento.getVerde().Vazia() || !hospital->Atendimento.getAmarela().Vazia() || !hospital->Atendimento.getVermelha().Vazia() 
-                            || !hospital->Medidas.getVerde().Vazia() || !hospital->Medidas.getAmarela().Vazia() || !hospital->Medidas.getVermelha().Vazia()
-                            || !hospital->Testes.getVerde().Vazia() || !hospital->Testes.getAmarela().Vazia() || !hospital->Testes.getVermelha().Vazia()
-                            || !hospital->Imagem.getVerde().Vazia() || !hospital->Imagem.getAmarela().Vazia() || !hospital->Imagem.getVermelha().Vazia()
-                            || !hospital->Instrumentos.getVerde().Vazia() || !hospital->Instrumentos.getAmarela().Vazia() || !hospital->Instrumentos.getVermelha().Vazia()) {
-        if (!eventos.vazio()) {
-            Evento* evento_atual = eventos.remover();
+void Simulador::executar()
+{
+    while (temEventoOuFila()) 
+    {
+        if (!eventos.vazio())
+        {
+            Evento *evento_atual = eventos.remover();
             tempo_atual = evento_atual->momento;
-            processarEvento(evento_atual);
+            switch (evento_atual->tipo){
+                case CHEGADA:
+                    processarChegada(evento_atual);
+                    break;
+                case ATENDIMENTO:
+                    processarAtendimento(evento_atual);
+                    break;
+                case SAIDA:
+                    processarSaida(evento_atual);
+                    break;
+            }
             delete evento_atual;
         }
 
-        for (Procedimentos* procedimento : {&hospital->Triagem, &hospital->Atendimento, &hospital->Medidas, &hospital->Testes, &hospital->Imagem, &hospital->Instrumentos}) {
-            for (Fila* fila : {&procedimento->getVermelha(), &procedimento->getAmarela(), &procedimento->getVerde()}) {
-                while (!fila->Vazia() && procedimento->n_unidades > 0) {
-                    Paciente* paciente = fila->Desenfileira();
+        for (Procedimentos *procedimento : {&hospital->Triagem, &hospital->Atendimento, &hospital->Medidas, &hospital->Testes, &hospital->Imagem, &hospital->Instrumentos})
+        {
+            for (Fila *fila : {&procedimento->getVermelha(), &procedimento->getAmarela(), &procedimento->getVerde()})
+            {
+                while (!fila->Vazia() && procedimento->n_unidades > 0)
+                {
+                    Paciente *paciente = fila->Desenfileira();
                     procedimento->n_unidades--;
-                    std::tm tempo_procedimento = addHours(tempo_atual, procedimento->tempo);
-                    Evento* novo_evento = new Evento(ATENDIMENTO, tempo_atual, paciente);
+                    std::tm tempo_procedimento = Auxiliar::adicionarHoras(tempo_atual, procedimento->tempo);
+                    Evento *novo_evento = new Evento(ATENDIMENTO, tempo_procedimento, paciente);
                     adicionarEvento(novo_evento);
-                    std::cout << "Novo evento de atendimento criado para o paciente " << paciente->id << " atendimento: " << procedimento << " previsto para acabar" << tempo_procedimento.tm_year + 1900 << " " << tempo_procedimento.tm_mon + 1 << " " << tempo_procedimento.tm_mday << " " << tempo_procedimento.tm_hour << std::endl;
                     switch (procedimento->nome)
                     {
                     case 0:
@@ -64,35 +77,15 @@ void Simulador::executar() {
     }
 }
 
-void Simulador::processarEvento(Evento* evento) {
-    std::cout << "Processando evento: tipo=" << evento->tipo << std::endl;
-    switch (evento->tipo) {
-        case CHEGADA:
-            processarChegada(evento);
-            break;
-        case ATENDIMENTO:
-            processarAtendimento(evento);
-            break;
-        case SAIDA:
-            processarSaida(evento);
-            break;
-    }
-}
-
-void Simulador::processarChegada(Evento* evento) {
-
-    std::cout << "Processando chegada: paciente=" << evento->paciente->id << ", tempo=" << tempo_atual.tm_year + 1900 << " "<< tempo_atual.tm_mon + 1 << " " << tempo_atual.tm_mday << " " << tempo_atual.tm_hour << std::endl;
-
-    hospital->Triagem.getVermelha().Enfileira(*evento->paciente);
-
+void Simulador::processarChegada(Evento *evento)
+{
+    hospital->Triagem.getVermelha().Enfileira(evento->paciente);
     evento->paciente->estado = 2;
-
 }
 
-void Simulador::processarAtendimento(Evento* evento) {
+void Simulador::processarAtendimento(Evento *evento)
+{
     Paciente* paciente = evento->paciente;
-    std::cout << "Processando atendimento: paciente=" << paciente->id << std::endl;
-
     switch (paciente->estado)
     {
     case 3:
@@ -120,97 +113,128 @@ void Simulador::processarAtendimento(Evento* evento) {
     }
 
     // Verificar se o paciente já realizou todos os procedimentos
-    bool todos_procedimentos_realizados = (paciente->medidas_hospitalares == 0 &&
-                                           paciente->testes_laboratorio == 0 &&
-                                           paciente->exames_imagem == 0 &&
-                                           paciente->instrumentos_medicamentos == 0);
+    bool todos_procedimentos_realizados=(paciente->medidas_hospitalares == 0 &&
+                                        paciente->testes_laboratorio == 0 &&
+                                        paciente->exames_imagem == 0 &&
+                                        paciente->instrumentos_medicamentos == 0);
+    if(paciente->estado == 3)
+    {
+        paciente->estado = 4;
+        switch (paciente->grau_urgencia)
+        {
+        case 0:
+            hospital->Atendimento.getVerde().Enfileira(paciente);
+            break;
+        case 1:
+            hospital->Atendimento.getAmarela().Enfileira(paciente);
+            break;
+        case 2:
+            hospital->Atendimento.getVermelha().Enfileira(paciente);
+            break;
+        }
 
-    if (todos_procedimentos_realizados || paciente->alta) {
+    }else if (todos_procedimentos_realizados || paciente->alta)
+    {
         // Criar um novo evento de saída para o paciente
-        Evento* novo_evento = new Evento(SAIDA, evento->momento, paciente);
+        Evento *novo_evento = new Evento(SAIDA, evento->momento, paciente);
         adicionarEvento(novo_evento);
-        std::cout << "Paciente " << paciente->id << " concluiu todos os procedimentos. Evento de saída criado." << std::endl;
-    } else {
-        // Verificar a fila dos procedimentos que o paciente ainda precisa fazer e colocá-lo na menor fila
-        if (paciente->medidas_hospitalares > 0) {
-            hospital->Medidas.getVerde().Enfileira(*paciente);
-        } else if (paciente->testes_laboratorio > 0) {
-            hospital->Testes.getVerde().Enfileira(*paciente);
-        } else if (paciente->exames_imagem > 0) {
-            hospital->Imagem.getVerde().Enfileira(*paciente);
-        } else if (paciente->instrumentos_medicamentos > 0) {
-            hospital->Instrumentos.getVerde().Enfileira(*paciente);
+    }
+    else
+    {
+        // Verificar a fila dos procedimentos que o paciente ainda precisa fazer
+        if (paciente->medidas_hospitalares > 0)
+        {
+            if (paciente->grau_urgencia == 0)
+            {
+                hospital->Medidas.getVerde().Enfileira(paciente);
+            }
+            else if (paciente->grau_urgencia == 1)
+            {
+                hospital->Medidas.getAmarela().Enfileira(paciente);
+            }
+            else if (paciente->grau_urgencia == 2)
+            {
+                hospital->Medidas.getVermelha().Enfileira(paciente);
+            }
+            paciente->estado = 6;
+        }
+        else if (paciente->testes_laboratorio > 0)
+        {
+            if (paciente->grau_urgencia == 0)
+            {
+                hospital->Testes.getVerde().Enfileira(paciente);
+            }
+            else if (paciente->grau_urgencia == 1)
+            {
+                hospital->Testes.getAmarela().Enfileira(paciente);
+            }
+            else if (paciente->grau_urgencia == 2)
+            {
+                hospital->Testes.getVermelha().Enfileira(paciente);
+            }
+            paciente->estado = 8;
+        }
+        else if (paciente->exames_imagem > 0)
+        {
+            if (paciente->grau_urgencia == 0)
+            {
+                hospital->Imagem.getVerde().Enfileira(paciente);
+            }
+            else if (paciente->grau_urgencia == 1)
+            {
+                hospital->Imagem.getAmarela().Enfileira(paciente);
+            }
+            else if (paciente->grau_urgencia == 2)
+            {
+                hospital->Imagem.getVermelha().Enfileira(paciente);
+            }
+            paciente->estado = 10;
+        }
+        else if (paciente->instrumentos_medicamentos > 0)
+        {
+            if (paciente->grau_urgencia == 0)
+            {
+                hospital->Instrumentos.getVerde().Enfileira(paciente);
+            }
+            else if (paciente->grau_urgencia == 1)
+            {
+                hospital->Instrumentos.getAmarela().Enfileira(paciente);
+            }
+            else if (paciente->grau_urgencia == 2)
+            {
+                hospital->Instrumentos.getVermelha().Enfileira(paciente);
+            }
+            paciente->estado = 12;
         }
     }
 }
-
-double Simulador::getElapsedHours(const std::tm& start, const std::tm& end) const {
-
-    if (start.tm_year < 70 || start.tm_mon < 0 || start.tm_mday <= 0) {
-    std::cerr << "Erro: Tempo inicial inválido." << std::endl;
-    exit(EXIT_FAILURE);
-}
-    time_t time_start = mktime(const_cast<std::tm*>(&start));
-    time_t time_end = mktime(const_cast<std::tm*>(&end));
-
-    if (time_start == (time_t)-1 || time_end == (time_t)-1) {
-        std::cerr << "Error: Invalid time values." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    double seconds_diff = difftime(time_end, time_start);
-    return seconds_diff / 3600.0;
-}
-
-void Simulador::processarSaida(Evento* evento) {
-    Paciente* paciente = evento->paciente;
-    std::cout << "Processando saída: paciente=" << paciente->id << " tempoalta:" << tempo_atual.tm_year + 1900 << " " << tempo_atual.tm_mon + 1 << " " << tempo_atual.tm_mday << " " << tempo_atual.tm_hour << "   TEMPO CHEGADA " << paciente->tempo_admissao.tm_year + 1900 << " " << paciente->tempo_admissao.tm_mon + 1 << " " << paciente->tempo_admissao.tm_mday << " " << paciente->tempo_admissao.tm_hour << std::endl;
-        if (mktime(const_cast<std::tm*>(&tempo_atual)) == (time_t)-1) {
-            std::cerr << "Error: Invalid current time (tempo_atual)." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-
-        if (mktime(const_cast<std::tm*>(&paciente->tempo_admissao)) == (time_t)-1) {
-            std::cerr << "Error: Invalid admission time (tempo_admissao)." << std::endl;
-            exit(EXIT_FAILURE);
-        }
+void Simulador::processarSaida(Evento *evento)
+{
+    Paciente *paciente = evento->paciente;
 
     // Calcular o tempo total que o paciente passou no hospital
-    float tempo_total_hospital = getElapsedHours(paciente->tempo_admissao, tempo_atual);
-
-    std::cout << "tempo_total_hospital: " << tempo_total_hospital << ", tempo_atendimento: " << paciente->tempo_atendimento << std::endl;
-
+    paciente->tempo_total = Auxiliar::diferenca(paciente->tempo_admissao, tempo_atual);
+    
     // Atualizar o tempo de saída do paciente
     paciente->tempo_saida = tempo_atual;
 
     // Calcular o tempo de espera na fila
-    paciente->tempo_espera_fila = tempo_total_hospital - paciente->tempo_atendimento;
+    paciente->tempo_espera_fila = paciente->tempo_total - paciente->tempo_atendimento;
 
-    // Atualizar o tempo total do paciente
-    paciente->tempo_total = tempo_total_hospital;
-    std::cout << "Paciente " << paciente->id << " saiu do hospital. Tempo total: " << paciente->tempo_total << std::endl;
-    std::cout << "Tempo de espera na fila: " << paciente->tempo_espera_fila << std::endl;
-    std::cout << "Tempo de atendimento: " << paciente->tempo_atendimento << std::endl;
-    std::cout << "TEMPO CHEGADA " << paciente->tempo_admissao.tm_year + 1900 << " " << paciente->tempo_admissao.tm_mon + 1 << " " << paciente->tempo_admissao.tm_mday << " " << paciente->tempo_admissao.tm_hour << std::endl;
-    std::cout << "TEMPO SAIDA " << paciente->tempo_saida.tm_year + 1900 << " " << paciente->tempo_saida.tm_mon + 1 << " " << paciente->tempo_saida.tm_mday << " " << paciente->tempo_saida.tm_hour << std::endl;
+    // Arredondar o tempo de espera na fila para 2 casas decimais
+    paciente->tempo_espera_fila = std::round(paciente->tempo_espera_fila * 100.0) / 100.0;
+
+    if (std::fabs(paciente->tempo_espera_fila) < 1e-6)
+    {
+        paciente->tempo_espera_fila = 0;
+    }
 }
 
-std::tm Simulador::addHours(const std::tm& date, float hours) const {
-    std::tm new_date = date;
-    time_t original_time = mktime(&new_date); // Converte para time_t
-
-    if (original_time == (time_t)-1) {
-        std::cerr << "Error: Invalid time value during mktime." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    original_time += static_cast<time_t>(hours * 3600); // Adiciona as horas
-
-    std::tm* updated_date = localtime(&original_time); // Converte de volta para std::tm
-    if (updated_date == nullptr) {
-        std::cerr << "Error: localtime conversion failed." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    return *updated_date;
+bool Simulador::temEventoOuFila() const {
+    return (!eventos.vazio() || !hospital->Triagem.getVermelha().Vazia() 
+                            || !hospital->Atendimento.getVerde().Vazia() || !hospital->Atendimento.getAmarela().Vazia() || !hospital->Atendimento.getVermelha().Vazia()    
+                            || !hospital->Medidas.getVerde().Vazia() || !hospital->Medidas.getAmarela().Vazia() || !hospital->Medidas.getVermelha().Vazia() 
+                            || !hospital->Testes.getVerde().Vazia() || !hospital->Testes.getAmarela().Vazia() || !hospital->Testes.getVermelha().Vazia() 
+                            || !hospital->Imagem.getVerde().Vazia() || !hospital->Imagem.getAmarela().Vazia() || !hospital->Imagem.getVermelha().Vazia() 
+                            || !hospital->Instrumentos.getVerde().Vazia() || !hospital->Instrumentos.getAmarela().Vazia() || !hospital->Instrumentos.getVermelha().Vazia());
 }

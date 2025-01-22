@@ -26,11 +26,6 @@ class Evento {
                tipo(tipo), momento(tempo_evento), paciente(paciente) {
             momento = tempo_evento;
             }
-
-        // Operador de comparação para a fila de prioridade
-        bool operator<(const Evento& other) const {
-            return mktime(const_cast<std::tm*>(&momento)) > mktime(const_cast<std::tm*>(&other.momento));
-        }
 };
 
 #endif // EVENTO_H

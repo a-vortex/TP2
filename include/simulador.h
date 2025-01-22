@@ -4,12 +4,14 @@
 #include "hospital.h"
 #include "evento.h"
 #include "filaprioridade.h"
+#include "auxiliar.h"
 #include <ctime>
 
 class Simulador {
 private:
     Hospital* hospital;
     std::tm tempo_atual;
+    bool temEventoOuFila() const;
 
 public:
     FilaPrioridade eventos;
@@ -24,8 +26,6 @@ public:
     void adicionarEvento(Evento* evento);
 
     void executar();
-
-    void processarEvento(Evento* evento);
 
     void processarChegada(Evento* evento);
 

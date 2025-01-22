@@ -3,23 +3,15 @@
 
 #include "paciente.h"
 #include "hospital.h"
+#include "auxiliar.h"
 #include <fstream>
-#include <string>
-#include <ctime>
+#include <iomanip>
 
 //A classe Gerenciador é responsável por processar a entrada do programa e montar os TADs a partir dela.
-//Também é responsável por imprimir as saídas do programa.
 class Gerenciador {
     public:
         Hospital* ProcessarEntrada(FILE* Entrada);
-        void imprimirSaida(const Paciente& paciente);
-        std::tm addHours(const std::tm& date, float hours) const;
-
-        // Declaração da função formatarDataHora
-        std::string formatarDataHora(int ano, int mes, int dia, float hora);
-
-    private:
-        std::string tempoParaString(const std::tm& tempo) const;
+        void imprimirSaida(Paciente** pacientes, int n_unidades);
 };
 
 #endif // GERENCIADOR_H
